@@ -4,37 +4,50 @@ import simpleGit from "simple-git";
 import random from "random";
 
 const path = "./data.json";
+const git = simpleGit();
 
-const markCommit = (x, y) => {
-  const date = moment()
-    .subtract(1, "y")
-    .add(1, "d")
-    .add(x, "w")
-    .add(y, "d")
-    .format();
+const makeCommits = async () => {
+  const startDate = moment("2025-01-01");
+  const endDate = moment("2026-12-31");
 
-  const data = {
-    date: date,
-  };
+  let currentDate = startDate.clone();
 
-  jsonfile.writeFile(path, data, () => {
-    simpleGit().add([path]).commit(date, { "--date": date }).push();
-  });
+  console.log("Starting commit generation...");
+
+  while (currentDate.isSameOrBefore(endDate)) {
+    // We want 10 commits on this day
+    for (let i = 0; i < 10; i++) {
+      // Generate a random time for this specific day
+      const hour = random.int(0, 23);
+      const minute = random.int(0, 59);
+      const second = random.int(0, 59);
+
+      const commitDate = currentDate.clone().set({
+        hour: hour,
+        minute: minute,
+        second: second
+      });
+
+      const formattedDate = commitDate.format();
+
+      const data = {
+        date: formattedDate,
+      };
+
+      console.log(`Committing: ${formattedDate}`);
+
+      await jsonfile.writeFile(path, data);
+      await git.add([path]);
+      await git.commit(formattedDate, { "--date": formattedDate });
+    }
+
+    // Move to the next active day (every other day)
+    currentDate.add(2, 'days');
+  }
+
+  console.log("Pushing all commits...");
+  await git.push();
+  console.log("Done!");
 };
 
-const makeCommits = (n) => {
-  if(n===0) return simpleGit().push();
-  const x = random.int(0, 54);
-  const y = random.int(0, 6);
-  const date = moment().subtract(1, "y").add(1, "d").add(x, "w").add(y, "d").format();
-
-  const data = {
-    date: date,
-  };
-  console.log(date);
-  jsonfile.writeFile(path, data, () => {
-    simpleGit().add([path]).commit(date, { "--date": date },makeCommits.bind(this,--n));
-  });
-};
-
-makeCommits(100);
+makeCommits();
